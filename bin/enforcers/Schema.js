@@ -683,7 +683,7 @@ function runDeserialize(exception, map, schema, originalValue) {
             exception.message('Expected an object. Received: ' + util.smart(value));
         }
 
-    } else {
+    } else if (schema.enforcerData) {
         const dataTypes = schema.enforcerData.staticData.dataTypes;
         const dataType = dataTypes[schema.type][schema.format] || null;
 
@@ -739,6 +739,36 @@ function runDeserialize(exception, map, schema, originalValue) {
                 return value;
             }
         }
+    }
+}
+
+function getDiscriminatorKey(schema, value) {
+    const discriminator = schema.discriminator;
+    if (discriminator && value.hasOwnProperty(discriminator.propertyName)) return value[discriminator.propertyName];
+}
+
+function getDiscriminatorSchema(schema, value) {
+    const key = getDiscriminatorKey(schema, value);
+    if (key) {
+        const discriminator = schema.discriminator;
+        const mapping = discriminator.mapping;
+        if (mapping && mapping[key]) return { key, schema: mapping[key] };
+
+        const schemas = schema.definition.components.schemas;
+        if (schemas && schemas[key]) return { key, schema: schemas[key] };
+    }
+
+    return { key };
+}
+
+function runDiscriminator(exception, map, parentSchema, value, next) {
+    value = value.value;
+
+    const { key, schema } = getDiscriminatorSchema(parentSchema, value);
+    if (!schema) {
+        exception.message('Discriminator property "' + key + '" as "' + value[key] + '" did not map to a schema');
+    } else {
+        return next(exception.nest('Discriminator property "' + key + '" as "' + value[key] + '" has one or more errors'), map, schema, value);
     }
 }
 
@@ -927,7 +957,7 @@ function runValidate(exception, map, schema, originalValue, options) {
 
     } else if (schema.anyOf) {
         if (schema.discriminator) {
-            const data = schema.getDiscriminator(value);
+            const data = getDiscriminatorSchema(schema, value);
             const subSchema = data.schema;
             const key = data.key;
             if (!subSchema) {
@@ -952,7 +982,7 @@ function runValidate(exception, map, schema, originalValue, options) {
 
     } else if (schema.oneOf) {
         if (schema.discriminator) {
-            const data = schema.getDiscriminator(value);
+            const data = getDiscriminatorSchema(schema, value);
             const subSchema = data.schema;
             const key = data.key;
             if (!subSchema) {
@@ -1050,7 +1080,7 @@ function runValidate(exception, map, schema, originalValue, options) {
 
             // if a discriminator is present then validate discriminator mapping
             if (schema.discriminator) {
-                const discriminatorSchema = version.getDiscriminatorSchema(schema, value);
+                const discriminatorSchema = getDiscriminatorSchema(schema, value);
                 if (discriminatorSchema) {
                     runValidate(exception, map, discriminatorSchema, value, options);
                 } else {

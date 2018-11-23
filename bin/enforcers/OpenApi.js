@@ -16,6 +16,9 @@
  **/
 'use strict';
 const EnforcerRef  = require('../enforcer-ref');
+const Exception     = require('../exception');
+const Result        = require('../result');
+const util          = require('../util');
 
 const rxHostParts = /^((?:https?|wss?):\/\/)?(.+?)(\/.+)?$/;
 const rxSemanticVersion = /^\d+\.\d+\.\d+$/;
@@ -55,7 +58,8 @@ module.exports = {
 
             return new Result({
                 operation: pathEnforcer[method],
-                params: pathMatch.params
+                params: pathMatch.params,
+                pathKey: pathMatch.pathKey
             });
         },
 
@@ -92,7 +96,7 @@ module.exports = {
             if (error) return new Result(undefined, error);
 
             // set up request input
-            const { operation, params } = pathObject;
+            const { operation, params, pathKey } = pathObject;
             const req = {
                 header: request.header || {},
                 path: params,
@@ -104,6 +108,7 @@ module.exports = {
             if (result.value) {
                 result.value.operation = operation;
                 result.value.response = code => this.response(operation, code);
+                result.value.pathKey = pathKey;
             }
             return result;
         },

@@ -43,14 +43,14 @@ module.exports = {
                 const pathParamDeclarationException = exception.at(pathKey).nest('Path parameter definitions inconsistent');
                 path.methods.forEach(method => {
                     const child = pathParamDeclarationException.at(method);
-                    const definitionParameters = Object.keys(path[method].parametersMap.path || {});
+                    const definitionParameters = Object.keys((path[method].parametersMap || {}).path || {});
                     const definitionCount = definitionParameters.length;
                     const pathParametersMissing = [];
                     for (let i = 0; i < definitionCount; i++) {
                         const name = definitionParameters[i];
                         if (!parameterNames.includes(name)) pathParametersMissing.push(name);
                     }
-                    if (pathParametersMissing.length) child('Path missing defined parameters: ' + pathParametersMissing.join(', '));
+                    if (pathParametersMissing.length) child.nest('Path missing defined parameters: ' + pathParametersMissing.join(', '));
 
                     const stringCount = parameterNames.length;
                     const definitionParametersMissing = [];
@@ -58,7 +58,7 @@ module.exports = {
                         const name = parameterNames[i];
                         if (!definitionParameters.includes(name)) definitionParametersMissing.push(name);
                     }
-                    if (definitionParametersMissing.length) child('Definition missing path parameters: ' + definitionParametersMissing.join(', '));
+                    if (definitionParametersMissing.length) child.nest('Definition missing path parameters: ' + definitionParametersMissing.join(', '));
                 });
 
                 // build search regular expression
@@ -79,8 +79,8 @@ module.exports = {
                 const rx = new RegExp('^' + rxStr + '$');
 
                 // store equivalency information
-                if (!pathEquivalencies[equivalencyKey]) pathEquivalencies[equivalencyKey] = [];
-                pathEquivalencies[equivalencyKey].push(pathKey);
+                if (!pathEquivalencies[pathKey]) pathEquivalencies[pathKey] = [];
+                pathEquivalencies[pathKey].push(pathKey);
 
                 // define parser function
                 const parser = pathString => {
@@ -95,7 +95,8 @@ module.exports = {
 
                     return {
                         params: pathParams,
-                        path
+                        path,
+                        pathKey
                     };
                 };
 
