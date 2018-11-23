@@ -427,7 +427,7 @@ module.exports = {
                     }
                 },
                 required: {
-                    allowed: ({parent}) => parent.definition.type === 'object',
+                    allowed: true,
                     type: 'array',
                     items: 'string'
                 },
